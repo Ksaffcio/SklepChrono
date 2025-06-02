@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.4</version> <!-- Używamy stabilnej wersji Spring Boot -->
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>com.example</groupId> <!-- Możesz dostosować, jeśli chcesz -->
+    <artifactId>javaprojekt</artifactId> <!-- Możesz dostosować -->
+    <version>0.0.1-SNAPSHOT</version>
+    <name>ProjektJava</name> <!-- Możesz dostosować -->
+    <description>Projekt sklepu z zegarkami w Spring Boot</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <!-- Wersja Lomboka jest zarządzana przez spring-boot-starter-parent,
+             ale jeśli chcesz ją jawnie zdefiniować, możesz to zrobić tutaj, np.: -->
+        <lombok.version>1.18.36</lombok.version> <!-- nie dotykac, jak sie dotkie to sie sypie !-->
+        <!-- Wersja springdoc jest podana jawnie w zależności, bo SB 3.2.4 jej nie zarządza -->
+    </properties>
+
+    <dependencies>
+        <!-- Spring Boot Starters - Podstawowe -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Baza danych i Migracje -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+
+        <!-- Narzędzia deweloperskie -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional> <!-- Wersja zarządzana przez Spring Boot Parent -->
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+            <!-- Wersja powinna być zarządzana przez Spring Boot Parent -->
+        </dependency>
+
+        <!-- Dokumentacja API -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.4.0</version> <!-- Wersja kompatybilna z SB 3.2.x -->
+        </dependency>
+
+        <!-- Testowanie -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <!-- Wersja pluginu i konfiguracja source/target są zarządzane przez Spring Boot Parent
+                     na podstawie właściwości <java.version> -->
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                            <!-- Wersja Lomboka jest zarządzana przez Spring Boot Parent
+                                 (przez <dependencyManagement> lub właściwość <lombok.version>).
+                                 Jeśli zdefiniowałeś <lombok.version> w <properties>,
+                                 możesz tu dodać: <version>${lombok.version}</version>
+                                 ale często nie jest to wymagane. -->
+                        </path>
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                            <version>${project.parent.version}</version>
+                            <!-- Wersja zarządzana przez Spring Boot Parent -->
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version> <!-- Użyj aktualnej stabilnej wersji JaCoCo -->
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal> <!-- Przygotowuje agenta JaCoCo przed uruchomieniem testow -->
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>prepare-package</phase> <!-- Generuje raport po wykonaniu testow, przed spakowaniem -->
+                        <!-- Alternatywnie mozna uzyc fazy 'test' lub 'verify' -->
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <!-- Opcjonalnie: Dodanie reguł sprawdzających pokrycie -->
+                    <execution>
+                        <id>jacoco-check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element> <!-- Moze byc CLASS, PACKAGE, METHOD, etc. -->
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter> <!-- Moze byc LINE, BRANCH, COMPLEXITY -->
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum> <!-- Wymagane 80% pokrycia instrukcji -->
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.60</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
