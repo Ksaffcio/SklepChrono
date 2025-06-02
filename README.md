@@ -52,8 +52,7 @@ Encje (model domeny).
 
 Diagram relacji encji (ERD) dla bazy danych:
 
-![Diagram ERD bazy danych.](sciezka/do/diagramu_erd.png){#fig:erd
-width="\\textwidth"}
+![Diagram ERD bazy danych.](https://cdn.discordapp.com/attachments/1378123618453557559/1379125585028055040/Screenshot_2025-06-01_163357.png?ex=683f1a4a&is=683dc8ca&hm=5411a6277745b7b350bf1237ceda33bd6da1b442f0ba802bcbd281b075999447&)
 
 Opis tabel: `zegarki` (z dziedziczeniem `SINGLE_TABLE` i kolumną
 `typ_zegarka`), `uzytkownicy`, `role`, `uzytkownik_role`,
