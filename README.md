@@ -78,17 +78,49 @@ Klasa abstrakcyjna `Zegarek` z podklasami (`ZegarekAnalogowy`,
 `ZegarekCyfrowy`, `Smartwatch`) i strategią `SINGLE_TABLE`.
 
 ``` {.java caption="Fragment encji Zegarek.java" language="Java"}
-// Wklej tutaj kluczowy fragment Zegarek.java
-@Entity
+
 @Table(name = "zegarki")
-@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(name = "typ_zegarka", discriminatorType = DiscriminatorType.STRING)
-@Data @SuperBuilder @NoArgsConstructor @AllArgsConstructor
-public abstract class Zegarek {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE) // Strategia dziedziczenia
+@DiscriminatorColumn(name = "typ_zegarka", discriminatorType = DiscriminatorType.STRING) // Kolumna okreslajaca typ
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@SuperBuilder // Pozwala na uzycie buildera w klasach dziedziczacych
+public abstract class Zegarek { // KLASA STAJE SIE ABSTRAKCYJNA
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idZegarka;
-    // ...
+
+    @Column(nullable = false, length = 100)
+    private String marka;
+
+    @Column(nullable = false, length = 100)
+    private String model;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal cena;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String opis;
+
+    @Column(nullable = false)
+    private Integer iloscNaStanie;
+
+    // Te pola moga byc wspolne, ale ich interpretacja moze byc rozna
+    @Column(length = 50)
+    private String typMechanizmu; // np. Kwarcowy, Automatyczny
+
+    @Column(length = 50)
+    private String materialPaska;
+
+    @Column(length = 50)
+    private String wodoodpornosc;
+
+    // Abstrakcyjna metoda, ktora beda implementowac podklasy
     public abstract String uzyskajTypSpecyficzny();
+
 }
 ```
 
@@ -100,18 +132,32 @@ Klasa `ZegarekService` zawiera logikę biznesową, w tym metodę
 `stworzZegarek` działającą jako fabryka.
 
 ``` {.java caption="Metoda fabryczna w ZegarekService" language="Java"}
-// Wklej tutaj fragment metody stworzZegarek z ZegarekService.java
-public ZegarekDto stworzZegarek(StworzEdytujZegarekRequestDto requestDto) {
-    Zegarek zegarek;
-    switch (requestDto.getTypZegarka().toUpperCase()) {
-        case "ANALOGOWY":
-            zegarek = ZegarekAnalogowy.builder() /* ... */ .build();
-            break;
-        // ...
-    }
-    // ...
-    return mapToZegarekDto(zegarekRepository.save(zegarek));
-}
+    // Metoda do tworzenia nowego zegarka (Simple Factory)
+    @Transactional
+    public ZegarekDto stworzZegarek(StworzEdytujZegarekRequestDto requestDto) {
+        Zegarek zegarek;
+
+        switch (requestDto.getTypZegarka().toUpperCase()) {
+            case "ANALOGOWY":
+                zegarek = ZegarekAnalogowy.builder() // Uzywamy SuperBuilder
+                        .typTarczy(requestDto.getTypTarczy())
+                        .build();
+                break;
+            case "CYFROWY":
+                zegarek = ZegarekCyfrowy.builder()
+                        .czyPodswietlenie(requestDto.getCzyPodswietlenie() != null && requestDto.getCzyPodswietlenie())
+                        .dodatkoweFunkcje(requestDto.getDodatkoweFunkcje())
+                        .build();
+                break;
+            case "SMARTWATCH":
+                zegarek = Smartwatch.builder()
+                        .systemOperacyjny(requestDto.getSystemOperacyjny())
+                        .czyNFC(requestDto.getCzyNFC() != null && requestDto.getCzyNFC())
+                        .build();
+                break;
+            default:
+                throw new IllegalArgumentException("Nieznany typ zegarka: " + requestDto.getTypZegarka());
+        }
 ```
 
 Szczegółowe wyjaśnienie, jak pola z DTO są mapowane na odpowiednie pola
@@ -125,10 +171,10 @@ Klasa `ZegarekController` udostępnia endpointy:
     ADMINISTRATOR).
 
 -   `GET /api/zegarki`: Pobieranie listy wszystkich zegarków
-    (publiczne).
+    (publiczne/user).
 
 -   `GET /api/zegarki/{id}`: Pobieranie szczegółów zegarka o danym ID
-    (publiczne).
+    (publiczne/user).
 
 -   `PUT /api/zegarki/{id}`: Aktualizacja zegarka (wymaga roli
     ADMINISTRATOR).
@@ -146,15 +192,34 @@ Plik `SecurityConfig.java` definiuje zasady bezpieczeństwa. Użyto
 `BCryptPasswordEncoder` do hashowania haseł. Główne reguły autoryzacji:
 
 ``` {.java caption="Fragment konfiguracji autoryzacji w SecurityConfig.java" language="Java"}
-// Wklej tutaj fragment metody filterChain z SecurityConfig.java pokazujący authorizeHttpRequests
-.authorizeHttpRequests(authz -> authz
-    .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-    .requestMatchers(HttpMethod.POST, "/api/zegarki").hasRole("ADMINISTRATOR")
-    .requestMatchers(HttpMethod.PUT, "/api/zegarki/**").hasRole("ADMINISTRATOR")
-    .requestMatchers(HttpMethod.DELETE, "/api/zegarki/**").hasRole("ADMINISTRATOR")
-    .requestMatchers(HttpMethod.GET, "/api/zegarki", "/api/zegarki/**").permitAll()
-    .anyRequest().authenticated()
-)
+@Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+
+                .authorizeHttpRequests(authz -> authz
+                        // Endpointy Swaggera
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                                // "/h2-console/**" -- z jakiegos powodu z tym jest masa bledow
+                        ).permitAll()
+                        // Reguly dla /api/zegarki
+                        .requestMatchers(HttpMethod.POST, "/api/zegarki").hasRole("ADMINISTRATOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/zegarki/**").hasRole("ADMINISTRATOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/zegarki/**").hasRole("ADMINISTRATOR")
+                        .requestMatchers(HttpMethod.GET, "/api/zegarki", "/api/zegarki/**").permitAll() // Przeniesione dla spójności
+                        // Wszystkie inne musi byc authenticated
+                        .anyRequest().authenticated()
+                )
+                .httpBasic(withDefaults())
+                .formLogin(withDefaults()); // domyslny formularz logowania
+
+
+
+        return http.build();
+    }
 ```
 
 Wyjaśnienie, dlaczego wybrano takie reguły i jak działają.
@@ -188,7 +253,7 @@ Dokumentacja API jest automatycznie generowana i dostępna pod adresem
 jak `@Operation`, `@ApiResponse` do wzbogacenia opisów.
 
 ![Interfejs Swagger
-UI.](sciezka/do/screenshotu_swagger.png){#fig:swagger width="90%"}
+UI.](https://cdn.discordapp.com/attachments/1378123618453557559/1379126475969531976/image.png?ex=683f1b1e&is=683dc99e&hm=ca7fdc4e2f5f3c4f147460c2887bffa82300f6496e826cfe0ab16991e8fef7c4&){#fig:swagger width="90%"}
 
 ### Walidacja DTO i Obsługa Błędów
 
@@ -197,9 +262,6 @@ w DTO (np. `@NotBlank`, `@Size`). Błędy walidacji są obsługiwane przez
 `GlobalExceptionHandler`, który zwraca status `400 Bad Request` z listą
 błędów.
 
-![Przykładowa odpowiedź API dla błędu
-walidacji.](sciezka/do/screenshotu_bledu_api.png){#fig:api_error
-width="70%"}
 
 # Testowanie Aplikacji
 
@@ -219,7 +281,7 @@ poleceniem `./mvnw clean verify` i dostępny w
 `target/site/jacoco/index.html`.
 
 ![Raport pokrycia kodu
-JaCoCo.](sciezka/do/screenshotu_jacoco.png){#fig:jacoco
+JaCoCo.](https://cdn.discordapp.com/attachments/1378123618453557559/1379127115584241795/Screenshot_2025-06-01_163451.png?ex=683f1bb7&is=683dca37&hm=dda9cf8729af2c8909de7a5b626236186827642a1c175210107c3c99dd107d87&){#fig:jacoco
 width="\\textwidth"}
 
 Szczegółowa analiza raportu pozwoliła na identyfikację obszarów
@@ -268,25 +330,4 @@ Dostępni użytkownicy (dane startowe z migracji Flyway):
 
 Uwierzytelnianie odbywa się za pomocą HTTP Basic Auth.
 
-![Przykład użycia API (np. tworzenie zegarka w
-Postmanie).](sciezka/do/screenshotu_postman.png){#fig:postman_przyklad
-width="80%"}
 
-# Podsumowanie i Wnioski
-
-## Realizacja Celów Projektu
-
-\[Tutaj opisz, w jakim stopniu udało się zrealizować cele postawione na
-początku projektu.\]
-
-## Napotkane Wyzwania i Rozwiązania
-
-\[Opisz krótko główne problemy napotkane podczas implementacji (np.
-konfiguracja zależności, problemy z testami, migracje) i jak zostały
-rozwiązane.\]
-
-## Propozycje Dalszego Rozwoju
-
-\[Zaproponuj możliwe rozszerzenia funkcjonalności aplikacji, np. system
-zamówień, koszyk, panel klienta, bardziej zaawansowane filtrowanie,
-system recenzji itp.\]
